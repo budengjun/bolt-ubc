@@ -1,235 +1,282 @@
 # =============================================================================
-# High-Performance Employee Analysis
-# Purpose: Identify factors that define a high-performance employee at BOLT
+# High-Performance Employee Tenure Exit Analysis
+# Question: At what point in tenure are high-performing employees most likely
+#           to exit? (early tenure vs. after extended time in role)
 # =============================================================================
 
-# --- 1. Load and Merge Data ---------------------------------------------------
+# --- 1. Load Data -------------------------------------------------------------
 
 employees   <- read.csv("BOLT_casefiles2026/BOLT_Employees.csv")
 performance <- read.csv("BOLT_casefiles2026/BOLT_Performance.csv")
-applicants  <- read.csv("BOLT_casefiles2026/BOLT_Applicants.csv")
 changes     <- read.csv("BOLT_casefiles2026/BOLT_EmployeeChanges.csv")
 
-# Compute average performance score per employee
+# --- 2. Compute Average Performance Per Employee -----------------------------
+
 avg_perf <- aggregate(PerformanceScore ~ EmployeeID, data = performance, FUN = mean)
 colnames(avg_perf)[2] <- "AvgPerformance"
 
-# Count number of reviews per employee (proxy for tenure/review frequency)
-review_count <- aggregate(PerformanceScore ~ EmployeeID, data = performance, FUN = length)
-colnames(review_count)[2] <- "NumReviews"
-
-# Count promotions per employee (role changes that are NOT Quit/Dismissed)
-promotions <- changes[!(changes$New.Role %in% c("Quit", "Dismissed")), ]
-promo_count <- as.data.frame(table(promotions$EmployeeID))
-colnames(promo_count) <- c("EmployeeID", "NumPromotions")
-promo_count$EmployeeID <- as.integer(as.character(promo_count$EmployeeID))
-
-# Merge all data together
 df <- merge(employees, avg_perf, by = "EmployeeID", all.x = TRUE)
-df <- merge(df, review_count, by = "EmployeeID", all.x = TRUE)
-df <- merge(df, promo_count, by = "EmployeeID", all.x = TRUE)
-df <- merge(df, applicants, by.x = "ApplicantID", by.y = "ApplicantID", all.x = TRUE)
-
-# Fill NA promotions with 0
-df$NumPromotions[is.na(df$NumPromotions)] <- 0
-
-# Remove employees without performance reviews
 df <- df[!is.na(df$AvgPerformance), ]
 
-# Calculate tenure in years (from HiredOn to today or leaving)
-df$HiredOn <- as.Date(df$HiredOn)
-df$TenureYears <- as.numeric(difftime(Sys.Date(), df$HiredOn, units = "days")) / 365.25
+# --- 3. Define High Performers (Top 25%) -------------------------------------
 
-# Define "High Performer": top 25% by average performance score
 threshold <- quantile(df$AvgPerformance, 0.75)
-df$HighPerformer <- ifelse(df$AvgPerformance >= threshold, 1, 0)
+df$HighPerformer <- ifelse(df$AvgPerformance >= threshold, "High Performer", "Other")
 
-cat("=== Dataset Summary ===\n")
-cat("Total employees with reviews:", nrow(df), "\n")
-cat("High-performer threshold (75th pct):", round(threshold, 2), "\n")
-cat("High performers:", sum(df$HighPerformer), "\n")
-cat("Non-high performers:", sum(df$HighPerformer == 0), "\n\n")
+cat("=============================================================\n")
+cat("  HIGH PERFORMER DEFINITION (Top 25%)\n")
+cat("=============================================================\n\n")
+cat(sprintf("  Threshold (75th pct): %.2f\n", threshold))
+cat(sprintf("  High Performers: %d  |  Others: %d\n\n",
+            sum(df$HighPerformer == "High Performer"),
+            sum(df$HighPerformer == "Other")))
 
-# --- 2. Descriptive Comparison ------------------------------------------------
+# --- 4. Turnover Rate Comparison ----------------------------------------------
 
-cat("=== Mean Comparison: High vs Non-High Performers ===\n\n")
+df$TurnedOver <- ifelse(df$Current.status %in% c("Left", "Fired"), 1, 0)
 
-compare_vars <- c("AvgWorkingHours.Week", "TenureYears",
-                   "YearsOfRelevantExperience", "NumPromotions", "NumReviews")
+cat("=============================================================\n")
+cat("  TURNOVER RATE: HIGH PERFORMERS vs OTHERS\n")
+cat("=============================================================\n\n")
 
-for (v in compare_vars) {
-  high_mean <- mean(df[[v]][df$HighPerformer == 1], na.rm = TRUE)
-  low_mean  <- mean(df[[v]][df$HighPerformer == 0], na.rm = TRUE)
-  cat(sprintf("%-30s  High: %6.2f   Non-High: %6.2f\n", v, high_mean, low_mean))
+turnover_table <- table(df$HighPerformer, df$TurnedOver)
+colnames(turnover_table) <- c("Retained", "Turned Over")
+cat("--- Turnover Counts ---\n\n")
+print(turnover_table)
+
+cat("\n--- Turnover Rates ---\n\n")
+for (grp in c("High Performer", "Other")) {
+  total    <- sum(df$HighPerformer == grp)
+  left     <- sum(df$HighPerformer == grp & df$TurnedOver == 1)
+  retained <- total - left
+  rate     <- 100 * left / total
+  cat(sprintf("  %s:\n", grp))
+  cat(sprintf("    Total: %d  |  Turned Over: %d  |  Retained: %d\n", total, left, retained))
+  cat(sprintf("    Turnover Rate: %.1f%%\n\n", rate))
 }
 
-# Wage distribution
-cat("\n=== Wage Distribution (%) ===\n")
-wage_table <- prop.table(table(df$HighPerformer, df$Wage), margin = 1)
-print(round(wage_table * 100, 1))
+hp_rate    <- 100 * sum(df$HighPerformer == "High Performer" & df$TurnedOver == 1) /
+                    sum(df$HighPerformer == "High Performer")
+other_rate <- 100 * sum(df$HighPerformer == "Other" & df$TurnedOver == 1) /
+                    sum(df$HighPerformer == "Other")
+diff_rate  <- hp_rate - other_rate
+cat(sprintf("  Difference: High Performers turnover is %.1f pp %s than Others\n\n",
+            abs(diff_rate), ifelse(diff_rate > 0, "HIGHER", "LOWER")))
 
-# Position (full-time vs part-time)
-cat("\n=== Position Distribution (%) ===\n")
-pos_table <- prop.table(table(df$HighPerformer, df$Position), margin = 1)
-print(round(pos_table * 100, 1))
+# Chi-squared test
+chi_test <- chisq.test(table(df$HighPerformer, df$TurnedOver))
+cat(sprintf("  Chi-squared p-value: %.4f  (%s)\n\n",
+            chi_test$p.value,
+            ifelse(chi_test$p.value < 0.05, "significant", "not significant")))
 
-# Role
-cat("\n=== Role Distribution (%) ===\n")
-role_table <- prop.table(table(df$HighPerformer, df$Role), margin = 1)
-print(round(role_table * 100, 1))
+# Turnover type breakdown (Quit vs Dismissed)
+quit_ids      <- unique(changes$EmployeeID[changes$New.Role == "Quit"])
+dismissed_ids <- unique(changes$EmployeeID[changes$New.Role == "Dismissed"])
 
-# Education
-cat("\n=== Education Distribution (%) ===\n")
-edu_table <- prop.table(table(df$HighPerformer, df$HighestEducationLevel), margin = 1)
-print(round(edu_table * 100, 1))
+df$TurnoverType <- "Retained"
+df$TurnoverType[df$EmployeeID %in% quit_ids & df$TurnedOver == 1]      <- "Quit"
+df$TurnoverType[df$EmployeeID %in% dismissed_ids & df$TurnedOver == 1] <- "Dismissed"
 
-# Past experience
-cat("\n=== Past Relevant Experience (%) ===\n")
-exp_table <- prop.table(table(df$HighPerformer, df$PastRelevantExperience), margin = 1)
-print(round(exp_table * 100, 1))
+cat("--- Turnover Type Breakdown ---\n\n")
+type_table <- table(df$HighPerformer, df$TurnoverType)
+cat("Counts:\n")
+print(type_table)
+cat("\nPercentages (row-wise):\n")
+print(round(prop.table(type_table, margin = 1) * 100, 1))
 
-# Branch
-cat("\n=== Branch Distribution (%) ===\n")
-branch_table <- prop.table(table(df$HighPerformer, df$Branch.), margin = 1)
-print(round(branch_table * 100, 1))
-
-# --- 3. Statistical Tests (t-tests / chi-squared) ----------------------------
-
-cat("\n=== Statistical Tests ===\n\n")
-
-# t-tests for continuous variables
-for (v in compare_vars) {
-  tt <- t.test(df[[v]][df$HighPerformer == 1],
-               df[[v]][df$HighPerformer == 0])
-  cat(sprintf("t-test for %-30s  p-value: %.4f  %s\n",
-              v, tt$p.value,
-              ifelse(tt$p.value < 0.05, "*significant*", "")))
+cat("\n")
+for (grp in c("High Performer", "Other")) {
+  total   <- sum(df$HighPerformer == grp)
+  quit_n  <- sum(df$HighPerformer == grp & df$TurnoverType == "Quit")
+  fire_n  <- sum(df$HighPerformer == grp & df$TurnoverType == "Dismissed")
+  cat(sprintf("  %s:  Quit rate = %.1f%%  |  Dismissal rate = %.1f%%\n",
+              grp, 100 * quit_n / total, 100 * fire_n / total))
 }
 
-# Chi-squared tests for categorical variables
-cat_vars <- c("Wage", "Position", "Role", "HighestEducationLevel",
-              "PastRelevantExperience", "Branch.")
-for (v in cat_vars) {
-  ct <- chisq.test(table(df$HighPerformer, df[[v]]))
-  cat(sprintf("Chi-sq for %-30s  p-value: %.4f  %s\n",
-              v, ct$p.value,
-              ifelse(ct$p.value < 0.05, "*significant*", "")))
+# Top quit reasons
+cat("\n--- Top Reasons High Performers Quit ---\n\n")
+hp_ids <- df$EmployeeID[df$HighPerformer == "High Performer"]
+hp_quits <- changes[changes$EmployeeID %in% hp_ids & changes$New.Role == "Quit", ]
+if (nrow(hp_quits) > 0) {
+  reason_table <- sort(table(hp_quits$ReasonForLeaving), decreasing = TRUE)
+  for (i in seq_along(reason_table)) {
+    cat(sprintf("  %2d. %-25s  %d (%.1f%%)\n",
+                i, names(reason_table)[i], reason_table[i],
+                100 * reason_table[i] / sum(reason_table)))
+  }
 }
 
-# --- 4. Logistic Regression ---------------------------------------------------
+cat("\n--- Top Reasons Others Quit ---\n\n")
+other_ids <- df$EmployeeID[df$HighPerformer == "Other"]
+other_quits <- changes[changes$EmployeeID %in% other_ids & changes$New.Role == "Quit", ]
+if (nrow(other_quits) > 0) {
+  reason_table2 <- sort(table(other_quits$ReasonForLeaving), decreasing = TRUE)
+  for (i in seq_along(reason_table2)) {
+    cat(sprintf("  %2d. %-25s  %d (%.1f%%)\n",
+                i, names(reason_table2)[i], reason_table2[i],
+                100 * reason_table2[i] / sum(reason_table2)))
+  }
+}
 
-cat("\n=== Logistic Regression: Factors Predicting High Performance ===\n\n")
+cat("\n")
 
-# Prepare factors
-df$Wage      <- factor(df$Wage)
-df$Position  <- factor(df$Position)
-df$Role      <- factor(df$Role)
-df$Branch.   <- factor(df$Branch.)
-df$HighestEducationLevel <- factor(df$HighestEducationLevel)
-df$PastRelevantExperience <- factor(df$PastRelevantExperience)
+# --- 5. Calculate Tenure for Exited Employees ---------------------------------
 
-model <- glm(HighPerformer ~ Wage + Position + Role + Branch. +
-               AvgWorkingHours.Week + TenureYears +
-               YearsOfRelevantExperience + HighestEducationLevel +
-               PastRelevantExperience + NumPromotions,
-             data = df, family = binomial)
+df$HiredOn <- as.Date(df$HiredOn)
 
-cat("--- Model Summary ---\n")
-print(summary(model))
+# Get exit dates from EmployeeChanges (last Quit or Dismissed event)
+exits <- changes[changes$New.Role %in% c("Quit", "Dismissed"), ]
+# Keep the LAST exit event per employee (some have multiple entries)
+exits <- exits[order(exits$EmployeeID, exits$DateChanged), ]
+last_exit <- aggregate(DateChanged ~ EmployeeID, data = exits, FUN = max)
+colnames(last_exit)[2] <- "ExitDate"
+last_exit$ExitDate <- as.Date(last_exit$ExitDate)
 
-# Odds ratios with confidence intervals
-cat("\n--- Odds Ratios (exp(coef)) ---\n")
-or <- exp(coef(model))
-ci <- exp(confint.default(model))
-or_table <- data.frame(OddsRatio = round(or, 3),
-                       CI_Lower  = round(ci[, 1], 3),
-                       CI_Upper  = round(ci[, 2], 3))
-print(or_table)
+# Also get the exit type (Quit vs Dismissed)
+exit_type <- exits[!duplicated(exits$EmployeeID, fromLast = TRUE),
+                   c("EmployeeID", "New.Role", "ReasonForLeaving")]
+colnames(exit_type)[2] <- "ExitType"
 
-# --- 5. Visualizations --------------------------------------------------------
+# Merge exit info
+df <- merge(df, last_exit, by = "EmployeeID", all.x = TRUE)
+df <- merge(df, exit_type, by = "EmployeeID", all.x = TRUE)
+
+# Filter to only exited employees
+exited <- df[df$Current.status %in% c("Left", "Fired"), ]
+exited$TenureMonths <- as.numeric(difftime(exited$ExitDate, exited$HiredOn, units = "days")) / 30.44
+# Remove any with missing exit dates
+exited <- exited[!is.na(exited$TenureMonths), ]
+
+cat("=============================================================\n")
+cat("  TENURE AT EXIT: HIGH PERFORMERS vs OTHERS\n")
+cat("=============================================================\n\n")
+
+# --- 5. Tenure Summary Statistics ---------------------------------------------
+
+cat("--- Tenure at Exit (Months) ---\n\n")
+
+for (grp in c("High Performer", "Other")) {
+  tenure <- exited$TenureMonths[exited$HighPerformer == grp]
+  cat(sprintf("  %s (n = %d):\n", grp, length(tenure)))
+  cat(sprintf("    Min: %5.1f  |  Q1: %5.1f  |  Median: %5.1f  |  Q3: %5.1f  |  Max: %5.1f\n",
+              min(tenure), quantile(tenure, 0.25), median(tenure),
+              quantile(tenure, 0.75), max(tenure)))
+  cat(sprintf("    Mean: %.1f months (%.1f years)\n\n", mean(tenure), mean(tenure) / 12))
+}
+
+# t-test
+tt <- t.test(exited$TenureMonths[exited$HighPerformer == "High Performer"],
+             exited$TenureMonths[exited$HighPerformer == "Other"])
+cat(sprintf("  t-test p-value: %.4f  %s\n\n",
+            tt$p.value, ifelse(tt$p.value < 0.05, "*significant*", "not significant")))
+
+# --- 6. Tenure Buckets -------------------------------------------------------
+
+cat("--- Tenure Bucket Analysis ---\n\n")
+
+exited$TenureBucket <- cut(exited$TenureMonths,
+                           breaks = c(-Inf, 6, 12, 18, 24, 36, Inf),
+                           labels = c("0-6 mo", "6-12 mo", "12-18 mo",
+                                      "18-24 mo", "24-36 mo", "36+ mo"))
+
+# Counts
+bucket_table <- table(exited$HighPerformer, exited$TenureBucket)
+cat("Counts:\n")
+print(bucket_table)
+
+# Percentages
+cat("\nPercentages (row-wise):\n")
+bucket_pct <- prop.table(bucket_table, margin = 1) * 100
+print(round(bucket_pct, 1))
+
+# Peak exit period
+cat("\n--- Peak Exit Period ---\n\n")
+for (grp in c("High Performer", "Other")) {
+  pcts <- bucket_pct[grp, ]
+  peak <- names(which.max(pcts))
+  cat(sprintf("  %s: Peak exit at %s (%.1f%% of exits)\n", grp, peak, max(pcts)))
+}
+
+# Cumulative exit analysis
+cat("\n--- Cumulative Exit by Tenure ---\n\n")
+for (grp in c("High Performer", "Other")) {
+  pcts <- bucket_pct[grp, ]
+  cum_pct <- cumsum(pcts)
+  cat(sprintf("  %s:\n", grp))
+  for (i in seq_along(cum_pct)) {
+    cat(sprintf("    By %-10s: %5.1f%% exited\n", names(cum_pct)[i], cum_pct[i]))
+  }
+  cat("\n")
+}
+
+# --- 7. Reasons by Tenure Bucket for High Performers -------------------------
+
+cat("--- High Performer Quit Reasons by Tenure ---\n\n")
+
+hp_exited <- exited[exited$HighPerformer == "High Performer" & exited$ExitType == "Quit", ]
+
+if (nrow(hp_exited) > 0) {
+  reason_by_tenure <- table(hp_exited$TenureBucket, hp_exited$ReasonForLeaving)
+  cat("Counts:\n")
+  print(reason_by_tenure)
+
+  cat("\nPercentages within each tenure bucket:\n")
+  reason_pct <- prop.table(reason_by_tenure, margin = 1) * 100
+  print(round(reason_pct, 1))
+}
+
+# --- 8. Visualizations --------------------------------------------------------
 
 cat("\n=== Generating Plots ===\n")
 
-# Plot 1: Performance Distribution by High vs Non-High
-png("performance_distribution.png", width = 800, height = 500)
-par(mfrow = c(1, 2), mar = c(5, 4, 3, 1))
+# Plot 1: Tenure distribution comparison
+png("tenure_exit_distribution.png", width = 1000, height = 600)
+par(mfrow = c(1, 2), mar = c(5, 4, 4, 2))
 
-hist(df$AvgPerformance[df$HighPerformer == 0],
-     main = "Non-High Performers", xlab = "Avg Performance Score",
-     col = "lightblue", breaks = 20, xlim = c(55, 100))
-abline(v = threshold, col = "red", lwd = 2, lty = 2)
+hist(exited$TenureMonths[exited$HighPerformer == "High Performer"],
+     breaks = seq(0, max(exited$TenureMonths, na.rm = TRUE) + 6, by = 3),
+     main = "High Performers - Tenure at Exit",
+     xlab = "Tenure (Months)", col = "salmon", xlim = c(0, 70),
+     freq = FALSE, ylab = "Density")
+abline(v = median(exited$TenureMonths[exited$HighPerformer == "High Performer"]),
+       col = "red", lwd = 2, lty = 2)
+legend("topright", "Median", col = "red", lty = 2, lwd = 2)
 
-hist(df$AvgPerformance[df$HighPerformer == 1],
-     main = "High Performers", xlab = "Avg Performance Score",
-     col = "salmon", breaks = 20, xlim = c(55, 100))
-abline(v = threshold, col = "red", lwd = 2, lty = 2)
+hist(exited$TenureMonths[exited$HighPerformer == "Other"],
+     breaks = seq(0, max(exited$TenureMonths, na.rm = TRUE) + 6, by = 3),
+     main = "Others - Tenure at Exit",
+     xlab = "Tenure (Months)", col = "lightblue", xlim = c(0, 70),
+     freq = FALSE, ylab = "Density")
+abline(v = median(exited$TenureMonths[exited$HighPerformer == "Other"]),
+       col = "blue", lwd = 2, lty = 2)
+legend("topright", "Median", col = "blue", lty = 2, lwd = 2)
+
 dev.off()
 
-# Plot 2: Boxplots of key continuous factors
-png("factor_boxplots.png", width = 1000, height = 600)
-par(mfrow = c(2, 3), mar = c(5, 4, 3, 1))
+# Plot 2: Grouped bar chart of tenure buckets
+png("tenure_buckets.png", width = 900, height = 550)
+par(mar = c(6, 5, 4, 2))
 
-for (v in c(compare_vars, "AvgPerformance")) {
-  label <- ifelse(v == "AvgWorkingHours.Week", "Avg Hours/Week", v)
-  boxplot(df[[v]] ~ df$HighPerformer,
-          names = c("Non-High", "High"),
-          main = label,
-          col = c("lightblue", "salmon"),
-          ylab = label)
-}
+barplot(bucket_pct, beside = TRUE,
+        col = c("salmon", "lightblue"),
+        main = "Exit Distribution by Tenure Bucket",
+        ylab = "% of Group's Exits", xlab = "",
+        legend.text = c("High Performers", "Others"),
+        args.legend = list(x = "topright"),
+        las = 2, ylim = c(0, max(bucket_pct) + 5))
+
 dev.off()
 
-# Plot 3: Role vs Performance
-png("role_performance.png", width = 800, height = 500)
-par(mar = c(7, 4, 3, 1))
-boxplot(AvgPerformance ~ Role, data = df,
-        main = "Average Performance by Role",
-        col = rainbow(length(unique(df$Role))),
-        ylab = "Avg Performance Score",
-        las = 2)
+# Plot 3: Boxplot comparison
+png("tenure_boxplot.png", width = 700, height = 500)
+par(mar = c(5, 5, 4, 2))
+
+boxplot(TenureMonths ~ HighPerformer, data = exited,
+        col = c("salmon", "lightblue"),
+        main = "Tenure at Exit: High Performers vs Others",
+        ylab = "Tenure (Months)",
+        xlab = "")
+
 dev.off()
 
-# Plot 4: Wage vs Performance
-png("wage_performance.png", width = 800, height = 500)
-par(mar = c(5, 4, 3, 1))
-boxplot(AvgPerformance ~ Wage, data = df,
-        main = "Average Performance by Wage Tier",
-        col = c("lightblue", "lightgreen", "salmon"),
-        ylab = "Avg Performance Score")
-dev.off()
-
-# Plot 5: Promotions vs Performance
-png("promotions_performance.png", width = 800, height = 500)
-par(mar = c(5, 4, 3, 1))
-boxplot(AvgPerformance ~ NumPromotions, data = df,
-        main = "Average Performance by Number of Promotions",
-        col = heat.colors(length(unique(df$NumPromotions))),
-        ylab = "Avg Performance Score",
-        xlab = "Number of Promotions")
-dev.off()
-
-cat("Plots saved: performance_distribution.png, factor_boxplots.png,\n")
-cat("             role_performance.png, wage_performance.png,\n")
-cat("             promotions_performance.png\n")
-
-# --- 6. Summary of Key Findings -----------------------------------------------
-
-cat("\n")
-cat("=============================================\n")
-cat("  KEY FINDINGS: What Defines High Performers\n")
-cat("=============================================\n\n")
-cat("The logistic regression and descriptive analysis above reveal which\n")
-cat("factors significantly predict whether an employee is a high performer\n")
-cat("(top 25% by average performance score). Check the model output for:\n\n")
-cat("  1. Role        - Do certain roles (Manager, Shift Lead) score higher?\n")
-cat("  2. Promotions  - Are promoted employees higher performers?\n")
-cat("  3. Wage Tier   - Does Competitive/Premium pay correlate with performance?\n")
-cat("  4. Hours/Week  - Do more hours lead to better performance?\n")
-cat("  5. Tenure      - Does longer tenure help?\n")
-cat("  6. Education   - Does education level matter?\n")
-cat("  7. Experience  - Does prior relevant experience predict success?\n")
-cat("  8. Branch      - Are some branches producing more high performers?\n")
-cat("  9. Position    - Full-time vs part-time performance differences?\n\n")
-cat("Look at the p-values and odds ratios in the model output.\n")
-cat("Statistically significant factors (p < 0.05) with odds ratio > 1\n")
-cat("indicate factors that INCREASE the likelihood of being high-performing.\n")
+cat("Plots saved: tenure_exit_distribution.png, tenure_buckets.png, tenure_boxplot.png\n")
