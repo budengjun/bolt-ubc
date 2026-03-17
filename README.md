@@ -144,7 +144,23 @@ across the entire employee base:
 > marginally, it is not enough to fix the systemic
 > turnover issue.
 
----
+### 5a. What About High Performers Specifically?
+
+Looking **only** at the 267 high-performing employees:
+
+| Group | n | Retained | Retention Rate |
+|---|---|---|---|
+| Promoted | 83 | 9 | **10.8%** |
+| Not Promoted | 184 | 17 | **9.2%** |
+
+- **Chi-squared p = 0.85** → Not significant
+- **Logistic regression:** OR = **1.19** (p = 0.68)
+
+> **Conclusion:** When looking exclusively at the
+> restaurant's top talent, **promotion does not
+> improve retention at all**. Promoted high performers
+> quit at exactly the same staggering rate (~90%)
+> as those who are never promoted.
 
 ## Q6. Branch-Level Differences in HP Turnover
 

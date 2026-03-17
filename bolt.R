@@ -33,23 +33,25 @@ turnover_table <- table(
   employee_compare$performance_group,
   employee_compare$turnover
 )
-turnover_table
+print(turnover_table)
 
 # turnover rate is 87.6% for high performers, 90.3& for others
-employee_compare |>
-  group_by(performance_group) |>
-  summarize(
-    n = n(),
-    turnover_n = sum(turnover == "Yes"),
-    turnover_rate = mean(turnover == "Yes")
-  )
+print(
+  employee_compare |>
+    group_by(performance_group) |>
+    summarize(
+      n = n(),
+      turnover_n = sum(turnover == "Yes"),
+      turnover_rate = mean(turnover == "Yes")
+    )
+)
 
 # p-value shows 0.2936
 # This non-significant result may partly reflect
 # the smaller sample size of the high-performing
 # group which can limit the ability to detect
 # group differences statistically.
-chisq.test(turnover_table)
+print(chisq.test(turnover_table))
 
 # 2. Among high-performing employees who exited,
 # the largest proportion had early tenure
@@ -87,12 +89,14 @@ high_perf_exit <- employeechanges_data |>
     )
   )
 
-high_perf_exit |>
-  count(tenure_group) |>
-  mutate(prop = n / sum(n))
+print(
+  high_perf_exit |>
+    count(tenure_group) |>
+    mutate(prop = n / sum(n))
+)
 
-summary(high_perf_exit$tenure_months)
-median(high_perf_exit$tenure_months, na.rm = TRUE)
+print(summary(high_perf_exit$tenure_months))
+print(median(high_perf_exit$tenure_months, na.rm = TRUE))
 
 
 
@@ -148,26 +152,30 @@ strong_promo <- promos_q3 |>
     )
   )
 
-strong_promo |>
-  group_by(exited) |>
-  summarize(
-    n = n(),
-    mean_months = mean(
-      months_in_role, na.rm = TRUE
-    ),
-    median_months = median(
-      months_in_role, na.rm = TRUE
-    ),
-    sd_months = sd(
-      months_in_role, na.rm = TRUE
+print(
+  strong_promo |>
+    group_by(exited) |>
+    summarize(
+      n = n(),
+      mean_months = mean(
+        months_in_role, na.rm = TRUE
+      ),
+      median_months = median(
+        months_in_role, na.rm = TRUE
+      ),
+      sd_months = sd(
+        months_in_role, na.rm = TRUE
+      )
     )
-  )
+)
 
 # Wilcoxon test: do exited strong performers
 # wait longer before promotion?
-wilcox.test(
-  months_in_role ~ exited,
-  data = strong_promo
+print(
+  wilcox.test(
+    months_in_role ~ exited,
+    data = strong_promo
+  )
 )
 
 # 3b. Logistic regression: does longer
@@ -179,8 +187,8 @@ promo_exit_model <- glm(
   family = binomial
 )
 
-summary(promo_exit_model)
-exp(coef(promo_exit_model))
+print(summary(promo_exit_model))
+print(exp(coef(promo_exit_model)))
 
 # 3c. Compare exit rates: promoted vs
 # unpromoted strong performers
@@ -201,20 +209,22 @@ strong_all <- employee_data |>
     )
   )
 
-strong_all |>
-  group_by(promoted) |>
-  summarize(
-    n = n(),
-    exit_n = sum(exited == "Yes"),
-    exit_rate = mean(exited == "Yes")
-  )
+print(
+  strong_all |>
+    group_by(promoted) |>
+    summarize(
+      n = n(),
+      exit_n = sum(exited == "Yes"),
+      exit_rate = mean(exited == "Yes")
+    )
+)
 
 promo_exit_table <- table(
   strong_all$promoted,
   strong_all$exited
 )
-promo_exit_table
-chisq.test(promo_exit_table)
+print(promo_exit_table)
+print(chisq.test(promo_exit_table))
 
 # 3d. Among unpromoted strong performers
 # who exited, check if "Lack of Growth"
@@ -229,10 +239,12 @@ unpromoted_exit <- employeechanges_data |>
     !is.na(ReasonForLeaving)
   )
 
-unpromoted_exit |>
-  count(ReasonForLeaving) |>
-  mutate(prop = n / sum(n)) |>
-  arrange(desc(prop))
+print(
+  unpromoted_exit |>
+    count(ReasonForLeaving) |>
+    mutate(prop = n / sum(n)) |>
+    arrange(desc(prop))
+)
 
 # Q3 findings:
 # Using the broader definition of promotion
@@ -299,17 +311,19 @@ promo_compare <- promos_q3 |>
   )
 
 # compare descriptive statistics
-promo_compare |>
-  group_by(performance_group) |>
-  summarize(
-    n = n(),
-    mean_months = mean(months_to_promo, na.rm = TRUE),
-    median_months = median(months_to_promo, na.rm = TRUE),
-    sd_months = sd(months_to_promo, na.rm = TRUE)
-  )
+print(
+  promo_compare |>
+    group_by(performance_group) |>
+    summarize(
+      n = n(),
+      mean_months = mean(months_to_promo, na.rm = TRUE),
+      median_months = median(months_to_promo, na.rm = TRUE),
+      sd_months = sd(months_to_promo, na.rm = TRUE)
+    )
+)
 
 # non-parametric test because time to higher role may be skewed
-wilcox.test(months_to_promo ~ performance_group, data = promo_compare)
+print(wilcox.test(months_to_promo ~ performance_group, data = promo_compare))
 
 # Q4 findings:
 # Using the broader definition of promotion,
@@ -343,22 +357,24 @@ promotion_retention <- employee_data |>
   )
 
 # retention rate by promotion status
-promotion_retention |>
-  group_by(promoted) |>
-  summarize(
-    n = n(),
-    retained_n = sum(retained == "Yes"),
-    retention_rate = mean(retained == "Yes"),
-    turnover_rate = mean(retained == "No")
-  )
+print(
+  promotion_retention |>
+    group_by(promoted) |>
+    summarize(
+      n = n(),
+      retained_n = sum(retained == "Yes"),
+      retention_rate = mean(retained == "Yes"),
+      turnover_rate = mean(retained == "No")
+    )
+)
 
 # count table and chi-square test
 retention_table <- table(
   promotion_retention$promoted,
   promotion_retention$retained
 )
-retention_table
-chisq.test(retention_table)
+print(retention_table)
+print(chisq.test(retention_table))
 
 # logistic regression
 retention_model <- glm(
@@ -367,8 +383,8 @@ retention_model <- glm(
   family = binomial
 )
 
-summary(retention_model)
-exp(coef(retention_model))
+print(summary(retention_model))
+print(exp(coef(retention_model)))
 
 # Q5 findings:
 # Using the broader definition of promotion
@@ -385,13 +401,54 @@ exp(coef(retention_model))
 # While promotion helps marginally across the
 # general population, it is clearly not enough
 # to fix the systemic turnover issue.
-# The odds ratio was 16.26, indicating that promoted employees had much higher
-# odds of being retained than non-promoted employees.
 
-# Overall, promotion status was strongly
-# associated with retention in this dataset,
-# although this should be interpreted as
-# association rather than causation.
+# 5a. Subpart: Do HIGH-PERFORMING employees who receive
+# promotions show significantly higher retention?
+promotion_retention_hp <- promotion_retention |>
+  filter(EmployeeID %in% performance_summarize$EmployeeID)
+
+# retention rate for high performers by promotion status
+print(
+  promotion_retention_hp |>
+    group_by(promoted) |>
+    summarize(
+      n = n(),
+      retained_n = sum(retained == "Yes"),
+      retention_rate = mean(retained == "Yes"),
+      turnover_rate = mean(retained == "No")
+    )
+)
+
+# count table and chi-square test for high performers
+retention_table_hp <- table(
+  promotion_retention_hp$promoted,
+  promotion_retention_hp$retained
+)
+print(retention_table_hp)
+print(chisq.test(retention_table_hp))
+
+# logistic regression for high performers
+retention_model_hp <- glm(
+  I(retained == "Yes") ~ promoted,
+  data = promotion_retention_hp,
+  family = binomial
+)
+print(summary(retention_model_hp))
+print(exp(coef(retention_model_hp)))
+
+# Q5a findings:
+# When looking EXCLUSIVELY at high-performing employees,
+# promotion does NOT improve retention at all.
+#
+# High performers who were promoted had nearly the exact
+# same retention rate (10.8%) as high performers who were
+# never promoted (9.2%). This difference is not statistically
+# significant (chi-sq p = 0.85).
+#
+# This perfectly aligns with the Q3c findings and confirms
+# that while promotions provide a minor retention boost for
+# the general employee population, they are entirely
+# ineffective at retaining the restaurant's top talent.
 
 # 6. Are there branch-level differences in
 # turnover of high performers?
@@ -410,14 +467,14 @@ high_perf_branch_summary <- high_perf_branch |>
     turnover_rate = mean(turnover == "Yes")
   ) |>
   arrange(desc(turnover_rate), desc(n))
-high_perf_branch_summary
+print(high_perf_branch_summary)
 branch_turnover_table <- table(
   high_perf_branch$Branch.,
   high_perf_branch$turnover
 )
-branch_turnover_table
+print(branch_turnover_table)
 
-chisq.test(branch_turnover_table)
+print(chisq.test(branch_turnover_table))
 # High-performer turnover rates varied descriptively across branches,
 # ranging from 81.8% to 97.2%.
 # However, the chi-square test did not show a statistically significant
@@ -439,9 +496,11 @@ chisq.test(branch_turnover_table)
 
 # 7a. Among high-performing employees who
 # exited, how common is insufficient wages?
-high_perf_exit |>
-  count(ReasonForLeaving) |>
-  mutate(prop = n / sum(n))
+print(
+  high_perf_exit |>
+    count(ReasonForLeaving) |>
+    mutate(prop = n / sum(n))
+)
 
 # create wage dissatisfaction flag
 high_perf_exit_wage <- high_perf_exit |>
@@ -451,9 +510,9 @@ high_perf_exit_wage <- high_perf_exit |>
                        "Insufficient Wages", "Other reasons")
   )
 
-high_perf_exit_wage |>
-  count(wage_exit) |>
-  mutate(prop = n / sum(n))
+print(high_perf_exit_wage |>
+        count(wage_exit) |>
+        mutate(prop = n / sum(n)))
 
 # 7b. Compare high performers vs average
 # performers on insufficient wages as a
@@ -506,25 +565,25 @@ wage_reason_table <- table(
   exit_wage_reason_compare$performance_group,
   exit_wage_reason_compare$insufficient_wages
 )
-wage_reason_table
+print(wage_reason_table)
 
-prop.table(wage_reason_table, margin = 1)
+print(prop.table(wage_reason_table, margin = 1))
 
-chisq.test(wage_reason_table)
+print(chisq.test(wage_reason_table))
 
 # 7c. Among high-performing exits, do those
 # leaving for insufficient wages have
 # longer tenure?
-high_perf_exit_wage |>
+print(high_perf_exit_wage |>
   group_by(wage_exit) |>
   summarize(
     n = n(),
     mean_tenure = mean(tenure_months, na.rm = TRUE),
     median_tenure = median(tenure_months, na.rm = TRUE),
     sd_tenure = sd(tenure_months, na.rm = TRUE)
-  )
+  ))
 
-wilcox.test(tenure_months ~ wage_exit, data = high_perf_exit_wage)
+print(wilcox.test(tenure_months ~ wage_exit, data = high_perf_exit_wage))
 
 # 7d. Are high-performing exits who leave for
 # insufficient wages concentrated in lower
@@ -542,15 +601,15 @@ high_perf_exit_wage2 <- high_perf_exit |>
     )
   )
 
-table(
-  high_perf_exit_wage2$insufficient_wages,
-  high_perf_exit_wage2$Wage
-)
-
-chisq.test(table(
+print(table(
   high_perf_exit_wage2$insufficient_wages,
   high_perf_exit_wage2$Wage
 ))
+
+print(chisq.test(table(
+  high_perf_exit_wage2$insufficient_wages,
+  high_perf_exit_wage2$Wage
+)))
 # The results provide limited evidence that
 # strong performers experienced wage stagnation
 # before exit.
@@ -598,31 +657,33 @@ high_perf_hours <- employee_data |>
 
 # 8a. Compare average working hours between
 # exited and retained high performers
-high_perf_hours |>
-  group_by(turnover) |>
-  summarize(
-    n = n(),
-    mean_hours = mean(AvgWorkingHours.Week, na.rm = TRUE),
-    median_hours = median(AvgWorkingHours.Week, na.rm = TRUE),
-    sd_hours = sd(AvgWorkingHours.Week, na.rm = TRUE)
-  )
+print(
+  high_perf_hours |>
+    group_by(turnover) |>
+    summarize(
+      n = n(),
+      mean_hours = mean(AvgWorkingHours.Week, na.rm = TRUE),
+      median_hours = median(AvgWorkingHours.Week, na.rm = TRUE),
+      sd_hours = sd(AvgWorkingHours.Week, na.rm = TRUE)
+    )
+)
 
 # non-parametric test because hours may not be normally distributed
-wilcox.test(
+print(wilcox.test(
   AvgWorkingHours.Week ~ turnover,
   data = high_perf_hours
-)
+))
 
 # 8b. Compare part-time vs full-time distribution by turnover
 position_turnover_table <- table(
   high_perf_hours$position_group,
   high_perf_hours$turnover
 )
-position_turnover_table
+print(position_turnover_table)
 
-prop.table(position_turnover_table, margin = 1)
+print(prop.table(position_turnover_table, margin = 1))
 
-chisq.test(position_turnover_table)
+print(chisq.test(position_turnover_table))
 
 # 8c. Logistic regression using hours as predictor of exit risk
 hours_model <- glm(
@@ -631,8 +692,8 @@ hours_model <- glm(
   family = binomial
 )
 
-summary(hours_model)
-exp(coef(hours_model))
+print(summary(hours_model))
+print(exp(coef(hours_model)))
 
 # 8d. Logistic regression using part-time/full-time status
 position_model <- glm(
@@ -641,8 +702,8 @@ position_model <- glm(
   family = binomial
 )
 
-summary(position_model)
-exp(coef(position_model))
+print(summary(position_model))
+print(exp(coef(position_model)))
 
 # 8e. Combined model
 combined_model <- glm(
@@ -651,8 +712,8 @@ combined_model <- glm(
   family = binomial
 )
 
-summary(combined_model)
-exp(coef(combined_model))
+print(summary(combined_model))
+print(exp(coef(combined_model)))
 # Among high-performing employees, those who
 # exited worked substantially fewer hours
 # on average than those who were retained
@@ -699,11 +760,11 @@ student_turnover_table <- table(
   employee_applicant$likely_student,
   employee_applicant$turnover
 )
-student_turnover_table
+print(student_turnover_table)
 
-prop.table(student_turnover_table, margin = 1)
+print(prop.table(student_turnover_table, margin = 1))
 
-chisq.test(student_turnover_table)
+print(chisq.test(student_turnover_table))
 # Using age and education as a proxy for
 # student status, the data does not support
 # managers' assumption that turnover is
