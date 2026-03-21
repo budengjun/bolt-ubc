@@ -165,27 +165,6 @@ Looking **only** at the 267 high-performing employees:
 > quit at exactly the same staggering rate (~90%)
 > as those who are never promoted.
 
-## Does Promotion Help Retain Low-Hours High Performers?
-
-Since low working hours are associated with higher exit risk, we tested whether promotion has a stronger retention effect specifically for low-hours high performers (< 35 hrs/week):
-
-| Hours Group | Promoted? | n | Retained | Retention Rate |
-|---|---|---|---|---|
-| High Hours (≥ 35) | No | 112 | 14 | **12.5%** |
-| High Hours (≥ 35) | Yes | 58 | 9 | **15.5%** |
-| Low Hours (< 35) | No | 104 | 7 | **6.7%** |
-| Low Hours (< 35) | Yes | 25 | 0 | **0%** |
-
-- **Chi-squared p = 0.083** → Approaching significance, but the result should be interpreted cautiously because of sparse cells (the low-hours promoted group had zero retained employees).
-
-### Statistical Solving Process
-
-- **Interaction Logistic Regression (grouped):** The interaction term `promoted × hours_group` was not significant (p = 0.990), but the model was unstable due to complete separation in the low-hours promoted cell (0/27 retained).
-- **Continuous Hours Model:** `AvgWorkingHours.Week` was a significant predictor of retention (p = 0.0025, OR = 1.122 — each additional hour/week increases retention odds by ~12.2%). The promotion effect and promotion-by-hours interaction were not reliably estimable.
-
-> **Conclusion:** Working-hour intensity matters more than promotion status in explaining retention among high performers. Higher weekly hours are consistently associated with better retention, while promotion does not show a clear additional retention effect across hours groups.
-
----
 
 # PROGRESSION
 
@@ -206,28 +185,6 @@ Among high-performing employees who exited:
 > within their first year, especially during the
 > first 6 months. Retention efforts should focus on
 > early-stage employee experience and support.
-
-## Is Compensation Aligned with Performance?
-
-Using `ReasonForLeaving == "Insufficient Wages"`
-as a proxy for wage dissatisfaction:
-
-- Only **6.6%** of HP exits cited insufficient
-  wages, far below better offer (38.2%) and
-  lack of growth (27.0%).
-- Average performers were more likely to leave
-  for insufficient wages (13.0% vs 6.6%;
-  Chi-squared p = 0.0137).
-- Among HP exits, those leaving for wages had
-  somewhat longer tenure (10.2 vs 8.7 months),
-  but not significant (Wilcoxon p = 0.2285).
-- No significant association between insufficient
-  wages and wage tier (Chi-squared p = 0.641).
-
-> Wage stagnation was **not** a primary driver of
-> exit among strong performers. Growth
-> opportunities and external offers are more
-> important.
 
 ---
 
@@ -251,36 +208,6 @@ as a proxy for wage dissatisfaction:
 > than the part-time/full-time label. Pay closer
 > attention to high performers with lower weekly
 > hours — they face higher exit risk.
-
-## Interaction: Hiring Profile × Working Hours
-
-Does a strong hiring profile protect against the exit risk of low working hours for top talent?
-
-![Hiring Profile x Working Hours](bolt_hp_profile_hours.png)
-
-| Profile | Hours Group | Turnover Rate |
-|---|---|---|
-| Favored (Both) | High Hours (≥35) | **84.0%** (n=106) |
-| Favored (Both) | Low Hours (<35) | **94.3%** (n=106) |
-| Non-Favored | High Hours (≥35) | **93.8%** (n=32) |
-| Non-Favored | Low Hours (<35) | **95.7%** (n=23) |
-
-- **Logistic Regression:** The interaction term `favored * AvgWorkingHours.Week` was not significant (p = 0.20), but descriptive results show a clear **10 percentage point gap** for favored profiles between high and low hours.
-- Top talent who are also highly qualified (education and experience) are **extremely sensitive** to working-hour intensity. When their hours are low, their turnover risk is just as high as anyone else's (~94%).
-
-> **Finding:** A "favored" hiring profile only provides a retention advantage if the high performer is also given **high working hours**.
-
-### Deep Dive: The "Top Tier" (Favored Profile HPs)
-
-Focusing exclusively on the **212** high performers who have **both** Higher Education and Relevant Experience:
-
-![Top Tier Focus](bolt_hp_favored_only_hours.png)
-
-- **Retention Sensitivity:** For this specific elite group, each additional hour of work per week reduces the odds of exit by **17.3%** (Logistic Regression p < 0.001, OR = 0.827).
-- **The Engagement Gap:** When working full-time (≥35 hrs), their turnover is **84.0%**. When working less than 35 hours, it climbs to **94.3%**.
-- This group is **more sensitive** to working hours than the general high-performing population (17.3% vs 16.2% per hour).
-
-> **Strategic Implication:** To retain the "best of the best," the restaurant must prioritize their engagement. High-performing recruits with strong resumes are the first to leave if they are not given a full workload.
 
 ## Is Turnover Driven by Student Employees?
 

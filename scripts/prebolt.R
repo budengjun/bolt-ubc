@@ -17,51 +17,7 @@ performance_summarize <- performance_data |>
 strong_employees <- employee_data |>
   filter(EmployeeID %in% performance_summarize$EmployeeID)
 
-# 1. Hiring: age and education
-hiring_data <- strong_employees |>
-  left_join(applicant_data, by = "ApplicantID") |>
-  mutate(Age = 2026 - YearOfBirth)
 
-# Plot: Age distribution
-p_age <- ggplot(hiring_data, aes(x = Age)) +
-  geom_histogram(binwidth = 1, fill = "skyblue", color = "black") +
-  theme_minimal() +
-  labs(title = "Age Distribution Among Strong Performers", x = "Age", y = "Count")
-ggsave("output/figures/demographics/prebolt_age.png", p_age, width = 6, height = 4)
-
-# Plot: Education distribution
-p_edu <- ggplot(hiring_data, aes(x = HighestEducationLevel)) +
-  geom_bar(fill = "lightgreen", color = "black") +
-  theme_minimal() +
-  labs(title = "Education Level Among Strong Performers", x = "Education", y = "Count") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-ggsave("output/figures/demographics/prebolt_edu.png", p_edu, width = 6, height = 4)
-
-# Part-time vs Full-time turnover rate
-pt_ft_data <- strong_employees |>
-  mutate(
-    turnover = ifelse(Current.status == "Working", 0, 1),
-    employment_type = Position
-  ) |>
-  group_by(employment_type) |>
-  summarize(
-    total = n(),
-    turnover_rate = mean(turnover)
-  )
-
-print("Part-time vs Full-time Turnover (Strong Performers):")
-print(pt_ft_data)
-
-p_pt_ft <- ggplot(pt_ft_data, aes(x = employment_type, y = turnover_rate, fill = employment_type)) +
-  geom_bar(stat = "identity", width = 0.5) +
-  geom_text(aes(label = paste0(scales::percent(turnover_rate, accuracy = 0.1), "\n(n=", total, ")")),
-            vjust = -0.5, size = 4.5, fontface = "bold") +
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1.0)) +
-  scale_fill_manual(values = c("full-time" = "#4C787E", "part-time" = "#B22222")) +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "none", plot.title = element_text(face = "bold", hjust = 0.5)) +
-  labs(title = "Turnover Rate: Part-time vs Full-time (Strong Performers)", x = "", y = "Turnover Rate")
-ggsave("output/figures/demographics/prebolt_pt_ft.png", p_pt_ft, width = 6, height = 5)
 
 # 2. Branch: turnover rate and poor management rate
 branch_analysis <- strong_employees |>
